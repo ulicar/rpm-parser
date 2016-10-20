@@ -22,8 +22,20 @@ def str_from_bytes(bytes, count):
 
     return strings[0:count]
 
+
+class RPM(object):
+    MAGIC = b'\xed\xab\xee\xdb'
+    HEADER = b'\x8e\xad\xe8'
+    LEAD_SIZE = 96
+
+    def __init__(self, archive):
+        self.archive = archive
+
 def main():
     settings = parse_arguments()
+
+    with open(settings.rpm, 'rb') as archive:
+        rpm = RPM(archive)
 
 
 def die(message):
