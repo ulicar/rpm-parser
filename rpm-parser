@@ -65,7 +65,7 @@ class RPM(object):
                 1: ('CHAR',         1, lambda d: c2i(d[0:1])),
                 2: ('INT8',         1, lambda d: c2i(d[0:1])),
                 3: ('INT16',        2, lambda d: s2i(d[0:2])),
-                4: ('INT32',        4, lambda d: i2i(d[0:4])), 
+                4: ('INT32',        4, lambda d: i2i(d[0:4])),
                 5: ('INT64',        0, ()),
                 6: ('STRING',       0, lambda d: d.hex()),
                 7: ('BIN',          1, lambda d: d.hex()),
@@ -168,11 +168,10 @@ class RPM(object):
             self.archive.seek(self.__store_position + index['offset'])
 
             #print (self.__index_type[index['type']], index['count'], index['tag'])
-            
 
             if index['type'] <= 5 or index['type'] == 7:
                 data = self.archive.read(size * index['count'])
-                
+
                 self.__store[index['tag']] = callback(data)
 
                 print (index['tag'], self.__store[index['tag']])
