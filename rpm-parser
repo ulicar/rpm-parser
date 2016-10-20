@@ -8,6 +8,8 @@ import io
 import struct
 import sys
 
+DEBUG = False
+
 
 def c2i(char):
     return struct.unpack('>b', char)[0]
@@ -22,6 +24,17 @@ def str_from_bytes(bytes, count):
     strings = bytes.split(b'\x00')
 
     return strings[0:count]
+
+def log(statement):
+    global DEBUG
+    if not DEBUG:
+        return
+    
+    if isinstance(statement, list):
+        print (*statement)
+        return
+
+    print (statement)
 
 
 class RPM(object):
@@ -111,22 +124,22 @@ class RPM(object):
 
         rpm_version = self.archive.read(2)
         self.__version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
-        print (self.__version)
+        log (self.__version)
 
         self.__type = self.__type[self.archive.read(2)]
-        print (self.__type)
+        log (self.__type)
 
         self.__arhitecture = self.__arhitecture[self.archive.read(2)]
-        print (self.__arhitecture)
+        log (self.__arhitecture)
 
         self.__package_name = self.archive.read(66).decode('utf-8').strip('\0')
-        print (self.__package_name)
+        log (self.__package_name)
          
         self.__operating_system = self.__operating_system[self.archive.read(2)]
-        print (self.__operating_system)
+        log (self.__operating_system)
 
         self.__signature = '{sig}'.format(sig=s2i(self.archive.read(2)))
-        print (self.__signature)
+        log (self.__signature)
 
         reserved = self.archive.read(16)
 
@@ -136,15 +149,15 @@ class RPM(object):
         assert header == RPM.HEADER, 'Wrong header in RPM self.archive'
 
         self.__header_version = c2i(self.archive.read(1))
-        print (self.__header_version)
+        log (self.__header_version)
 
         reserved = self.archive.read(4)
 
         self.__index_entries_count = i2i(self.archive.read(4))
-        print (self.__index_entries_count)
+        log (self.__index_entries_count)
 
         self.__header_size = i2i(self.archive.read(4))
-        print (self.__header_size)
+        log (self.__header_size)
 
         self.__index_entries = []
         for _ in range(0, self.__index_entries_count):
@@ -167,14 +180,14 @@ class RPM(object):
 
             self.archive.seek(self.__store_position + index['offset'])
 
-            #print (self.__index_type[index['type']], index['count'], index['tag'])
+            #log (self.__index_type[index['type']], index['count'], index['tag'])
 
             if index['type'] <= 5 or index['type'] == 7:
                 data = self.archive.read(size * index['count'])
 
                 self.__store[index['tag']] = callback(data)
 
-                print (index['tag'], self.__store[index['tag']])
+                # log (index['tag'], self.__store[index['tag']])
 
                 continue
 
@@ -189,7 +202,7 @@ class RPM(object):
 
                 self.__store[index['tag']] = converted
 
-                print (index['tag'], self.__store[index['tag']])
+                # log (index['tag'], self.__store[index['tag']])
 
                 continue
 
@@ -205,7 +218,10 @@ class RPM(object):
 
 
 def main():
+    global DEBUG
+
     settings = parse_arguments()
+    DEBUG = settings.verbose
 
     with open(settings.rpm, 'rb') as archive:
         rpm = RPM(archive)
@@ -223,6 +239,13 @@ def parse_arguments():
         'rpm',
         metavar='RPM',
         help='RPM file'
+    )
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        default=False,
+        help='log metadata as it\'s being parsed'
     )
 
     return parser.parse_args()
