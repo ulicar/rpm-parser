@@ -50,11 +50,54 @@ class RPM(object):
                 b'\x00\x01': 'Linux'
         }
         self.__signature = None                     # 2
+        self.__header_version = None                # 1
+        self.__reserved = None                      # 4
+        self.__index_entries_count = None           # 4
+        self.__signature_size = None                # 4
+        self.__index = {
+                'tag': None,                        # 4
+                'type': None,                       # 4
+                'offset': None,                     # 4
+                'count': None                       # 4
+        }
+        self.__index_type = {
+                0: ('NULL',         0, ()),
+                1: ('CHAR',         1, lambda d: c2i(d[0:1])),
+                2: ('INT8',         1, lambda d: c2i(d[0:1])),
+                3: ('INT16',        2, lambda d: s2i(d[0:2])),
+                4: ('INT32',        4, lambda d: i2i(d[0:4])), 
+                5: ('INT64',        0, ()),
+                6: ('STRING',       0, lambda d: d.hex()),
+                7: ('BIN',          1, lambda d: d.hex()),
+                8: ('STRING_ARRAY', 0, ()),
+                9: ('I18STRING',    0, ())
+        }
+        self.__signature_type = {
+                  62: 'TAG_HEADERSIGNATURES',
+                  63: 'TAG_HEADERIMMUTABLE',
+                  64: 'TAG_HEADER18NTABLE',
+                 267: 'SIGTAG_DSA',
+                 268: 'SIGTAG_RSA',
+                 269: 'SIGTAG_SHA1',
+                1000: 'SIGTAG_SIZE',
+                1002: 'SIGTAG_PGP',
+                1004: 'SIGTAG_MD5',
+                1005: 'SIGTAG_GPG',
+                1007: 'SIGTAG_PAYLOADSIZE',
+                1010: 'SIGTAG_SHA1HEADER',
+                1011: 'SIGTAG_DSAHEADER',
+                1012: 'SIGTAG_RSAHEADER'
+        }
+
+        self.__store = None                         # Unlimited
 
 
     def parse(self):
         self.archive.seek(0)
         self.parse_lead()
+
+        self.archive.seek(RPM.LEAD_SIZE)
+        self.parse_signature()
 
 
     def parse_lead(self):
@@ -82,6 +125,9 @@ class RPM(object):
         print (self.__signature)
 
         reserved = self.archive.read(16)
+
+    def parse_signature(self):
+        signature = self.parse_header()
 
 
 def main():
