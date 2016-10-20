@@ -57,11 +57,9 @@ def parse_arguments():
 if __name__ == '__main__':
     try:
         main()
-    except Exception as e:
+    except Exception as error:
         import traceback
         traceback.print_exc()
-        print (str(e))
-
-        exit(-1)
+        die(str(error))
 
     exit(0)
