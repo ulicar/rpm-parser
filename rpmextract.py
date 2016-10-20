@@ -99,6 +99,10 @@ class RPM(object):
         self.archive.seek(RPM.LEAD_SIZE)
         self.parse_signature()
 
+        self.archive.seek(self.signature_size())
+        print (self.archive.tell())
+        self.parse_header()
+
 
     def parse_lead(self):
         magic = self.archive.read(4)
@@ -126,8 +130,79 @@ class RPM(object):
 
         reserved = self.archive.read(16)
 
+    def parse_header(self):
+        header = self.archive.read(3)
+
+        assert header == RPM.HEADER, 'Wrong header in RPM self.archive'
+
+        self.__header_version = c2i(self.archive.read(1))
+        print (self.__header_version)
+
+        reserved = self.archive.read(4)
+
+        self.__index_entries_count = i2i(self.archive.read(4))
+        print (self.__index_entries_count)
+
+        self.__header_size = i2i(self.archive.read(4))
+        print (self.__header_size)
+
+        self.__index_entries = []
+        for _ in range(0, self.__index_entries_count):
+            index = dict()
+            index['tag'] = self.__signature_type[i2i(self.archive.read(4))]
+            index['type'] = i2i(self.archive.read(4))
+            index['offset'] = i2i(self.archive.read(4))
+            index['count'] = i2i(self.archive.read(4))
+            
+            self.__index_entries.append(index)
+
+        size = sum(index['count'] for index in self.__index_entries)
+        self.__store_position = RPM.LEAD_SIZE + size 
+
+        self.__index_entries.sort(key=lambda index: index['offset'])
+
+        self.__store = {}
+        for index in self.__index_entries:
+            name, size, callback = self.__index_type[index['type']]
+
+            self.archive.seek(self.__store_position + index['offset'])
+
+            #print (self.__index_type[index['type']], index['count'], index['tag'])
+            
+
+            if index['type'] <= 5 or index['type'] == 7:
+                data = self.archive.read(size * index['count'])
+                
+                self.__store[index['tag']] = callback(data)
+
+                print (index['tag'], self.__store[index['tag']])
+
+                continue
+
+            elif index['type'] == 6 or index['type'] == 9:
+                data = self.archive.read()
+                strings = str_from_bytes(data, index['count'])
+
+                converted = list(map(callback, strings))
+
+                if index['count'] == 1:
+                    converted = converted[0]
+
+                self.__store[index['tag']] = converted
+
+                print (index['tag'], self.__store[index['tag']])
+
+                continue
+
     def parse_signature(self):
         signature = self.parse_header()
+
+    def signature_size(self):
+        start = self.__store_position + self.__header_size
+        self.archive.seek(start)
+        data = self.archive.read()
+
+        return data.index(RPM.HEADER) + start
 
 
 def main():
