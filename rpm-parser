@@ -8,6 +8,7 @@ import io
 import struct
 import sys
 
+from enum import Enum
 DEBUG = False
 
 
@@ -37,6 +38,126 @@ def log(statement):
     print (statement)
 
 
+
+class Type(Enum):
+    Binary = 0
+    Source = 1
+
+
+class OperatingSystem(Enum):
+    Linux = 1
+
+
+class Arhitecture(Enum):
+    i386    = 1
+    Alpha   = 2
+    Sparc   = 3
+    MIPS    = 4
+    PowerPC = 5
+    m68000  = 6
+    SGI     = 7
+
+class Header(Enum):
+    TAG_HEADERSIGNATURES  = 62
+    TAG_HEADERIMMUTABLE   = 63
+    TAG_HEADER18NTABLE    = 64
+    TAG_HEADERI18NTABLE   = 100
+
+    TAG_NAME              = 1000
+    TAG_VERSION           = 1001
+    TAG_RELEASE           = 1002
+    TAG_SUMMARY           = 1004
+    TAG_DESCRIPTION       = 1005
+    TAG_BUILDTIME         = 1006
+    TAG_BUILDHOST         = 1007
+    TAG_SIZE              = 1009
+    TAG_LICENSE           = 1014
+    TAG_GROUP             = 1016
+    TAG_OS                = 1021
+    TAG_ARCH              = 1022
+    TAG_SOURCERPM         = 1044
+    TAG_FILEVERIFYFLAGS   = 1045
+    TAG_ARCHIVESIZE       = 1046
+    TAG_RPMVERSION        = 1064
+    TAG_CHANGELOGTIME     = 1080
+    TAG_CHANGELOGNAME     = 1081
+    TAG_CHANGELOGTEXT     = 1082
+    TAG_COOKIE            = 1094
+    TAG_OPTFLAGS          = 1122
+    TAG_PAYLOADFORMAT     = 1124
+    TAG_PAYLOADCOMPRESSOR = 1125
+    TAG_PAYLOADFLAGS      = 1126
+    TAG_RHNPLATFORM       = 1131
+    TAG_PLATFORM          = 1132
+
+	TAG_OLDFILENAMES      = 1027
+	TAG_FILESIZES         = 1028
+	TAG_FILEMODES         = 1030
+	TAG_FILERDEVS         = 1033
+	TAG_FILEMTIMES        = 1034
+	TAG_FILEMD5S          = 1035
+	TAG_FILELINKTOS       = 1036
+	TAG_FILEFLAGS         = 1037
+	TAG_FILEUSERNAME      = 1039
+	TAG_FILEGROUPNAME     = 1040
+	TAG_FILEDEVICES       = 1095
+	TAG_FILEINODES        = 1096
+	TAG_FILELANGS         = 1097
+	TAG_DIRINDEXES        = 1116
+	TAG_BASENAMES         = 1117
+	TAG_DIRNAMES          = 1118
+	TAG_PROVIDENAME       = 1047
+	TAG_REQUIREFLAGS      = 1048
+	TAG_REQUIRENAME       = 1049
+	TAG_REQUIREVERSION    = 1050
+	TAG_CONFLICTFLAGS     = 1053
+	TAG_CONFLICTNAME      = 1054
+	TAG_CONFLICTVERSION   = 1055
+	TAG_OBSOLETENAME      = 1090
+	TAG_PROVIDEFLAGS      = 1112
+	TAG_PROVIDEVERSION    = 1113
+	TAG_OBSOLETEFLAGS     = 1114
+	TAG_OBSOLETEVERSION   = 1115
+
+class Signature(Enum):
+    SIGTAG_DSA = 267
+    SIGTAG_RSA = 268
+    SIGTAG_SHA1 = 269
+    SIGTAG_SIZE = 1000
+    SIGTAG_PGP = 1002
+    SIGTAG_MD5 = 1004
+    SIGTAG_GPG = 1005
+    SIGTAG_PAYLOADSIZE = 1007
+    SIGTAG_SHA1HEADER =1010
+    SIGTAG_DSAHEADER = 1011
+    SIGTAG_RSAHEADER = 1012
+
+
+class Index(Enum):
+    NULL         = 0
+    CHAR         = 1  
+    INT8         = 2 
+    INT16        = 3 
+    INT32        = 4 
+    INT64        = 5 
+    STRING       = 6 
+    BIN          = 7 
+    STRING_ARRAY = 8 
+    I18STRING    = 9 
+
+class IndexSettings(Enum):
+    NULL         = (0, ())
+    CHAR         = (1, lambda d: c2i(d[0:1]))
+    INT8         = (2, lambda d: c2i(d[0:1]))
+    INT16        = (2, lambda d: s2i(d[0:2]))
+    INT32        = (4, lambda d: i2i(d[0:4]))
+    INT64        = (0, ())
+    STRING       = (0, lambda d: d.hex())
+    BIN          = (1, lambda d: d.hex())
+    STRING_ARRAY = (0, ())
+    I18SRING     = (0, ())
+
+
 class RPM(object):
     MAGIC = b'\xed\xab\xee\xdb'
     HEADER = b'\x8e\xad\xe8'
@@ -45,23 +166,10 @@ class RPM(object):
     def __init__(self, archive):
         self.archive = archive
         self.__version = None                       # 4
-        self.__type = {                             # 2
-                b'\x00\x00': 'Binary',
-                b'\x00\x01': 'Source'
-        }
-        self.__arhitecture = {                      # 2
-                b'\x00\x01': 'i386',
-                b'\x00\x02': 'Alpha',
-                b'\x00\x03': 'Sparc',
-                b'\x00\x04': 'MIPS',
-                b'\x00\x05': 'PowerPC',
-                b'\x00\x06': '68000',
-                b'\x00\x07': 'SGI'
-        }
+        self.__type = None                          # 2
+        self.__arhitecture = None                   # 2
         self.__package_name = None                  # 66
-        self.__operating_system = {                 # 2
-                b'\x00\x01': 'Linux'
-        }
+        self.__operating_system = None              # 2
         self.__signature = None                     # 2
         self.__header_version = None                # 1
         self.__reserved = None                      # 4
@@ -73,35 +181,8 @@ class RPM(object):
                 'offset': None,                     # 4
                 'count': None                       # 4
         }
-        self.__index_type = {
-                0: ('NULL',         0, ()),
-                1: ('CHAR',         1, lambda d: c2i(d[0:1])),
-                2: ('INT8',         1, lambda d: c2i(d[0:1])),
-                3: ('INT16',        2, lambda d: s2i(d[0:2])),
-                4: ('INT32',        4, lambda d: i2i(d[0:4])),
-                5: ('INT64',        0, ()),
-                6: ('STRING',       0, lambda d: d.hex()),
-                7: ('BIN',          1, lambda d: d.hex()),
-                8: ('STRING_ARRAY', 0, ()),
-                9: ('I18STRING',    0, ())
-        }
-        self.__signature_type = {
-                  62: 'TAG_HEADERSIGNATURES',
-                  63: 'TAG_HEADERIMMUTABLE',
-                  64: 'TAG_HEADER18NTABLE',
-                 267: 'SIGTAG_DSA',
-                 268: 'SIGTAG_RSA',
-                 269: 'SIGTAG_SHA1',
-                1000: 'SIGTAG_SIZE',
-                1002: 'SIGTAG_PGP',
-                1004: 'SIGTAG_MD5',
-                1005: 'SIGTAG_GPG',
-                1007: 'SIGTAG_PAYLOADSIZE',
-                1010: 'SIGTAG_SHA1HEADER',
-                1011: 'SIGTAG_DSAHEADER',
-                1012: 'SIGTAG_RSAHEADER'
-        }
-
+        self.__index_type = None
+        self.__signature_type = None                
         self.__store = None                         # Unlimited
 
 
@@ -113,7 +194,6 @@ class RPM(object):
         self.parse_signature()
 
         self.archive.seek(self.signature_size())
-        print (self.archive.tell())
         self.parse_header()
 
 
@@ -126,19 +206,19 @@ class RPM(object):
         self.__version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
         log (self.__version)
 
-        self.__type = self.__type[self.archive.read(2)]
+        self.__type = Type(s2i(self.archive.read(2)))
         log (self.__type)
 
-        self.__arhitecture = self.__arhitecture[self.archive.read(2)]
+        self.__arhitecture = Arhitecture(s2i(self.archive.read(2)))
         log (self.__arhitecture)
 
         self.__package_name = self.archive.read(66).decode('utf-8').strip('\0')
         log (self.__package_name)
          
-        self.__operating_system = self.__operating_system[self.archive.read(2)]
+        self.__operating_system = OperatingSystem(s2i(self.archive.read(2)))
         log (self.__operating_system)
 
-        self.__signature = '{sig}'.format(sig=s2i(self.archive.read(2)))
+        self.__signature = str(s2i(self.archive.read(2)))
         log (self.__signature)
 
         reserved = self.archive.read(16)
@@ -162,7 +242,7 @@ class RPM(object):
         self.__index_entries = []
         for _ in range(0, self.__index_entries_count):
             index = dict()
-            index['tag'] = self.__signature_type[i2i(self.archive.read(4))]
+            index['tag'] = Signature(i2i(self.archive.read(4)))
             index['type'] = i2i(self.archive.read(4))
             index['offset'] = i2i(self.archive.read(4))
             index['count'] = i2i(self.archive.read(4))
@@ -176,7 +256,8 @@ class RPM(object):
 
         self.__store = {}
         for index in self.__index_entries:
-            name, size, callback = self.__index_type[index['type']]
+            index_name = Index(index['type']).name
+            _, callback = IndexSettings[index_name].value
 
             self.archive.seek(self.__store_position + index['offset'])
 
