@@ -57,7 +57,8 @@ class Index(object):
         return count * type
 
     def __str__(self):
-        return ''
+        return "Tag: {0},\tType: {1},\tOffset: {2},\tCount: {3}"\
+                "".format(self.tag, self.type, self.offset, self.count)
 
     @classmethod
     def parse(cls, archive, entry_point, tags):
@@ -89,15 +90,19 @@ class Header(object):
     def size(self):
         return self.header_size
 
-    def signature_size(self):
-        start = self.__store_position + self.__header_size
-        self.archive.seek(start)
-        data = self.archive.read()
-
-        return data.index(RPM.HEADER) + start
-
     def __str__(self):
-        return ''
+        representation = "HeaderVersion: {0}\nIndexEntriesCount: {1}\nEntries:\n"\
+                "".format(self.version, self.index_entries_count)
+
+        for index_entry in self.index_entries:
+            entry = "\t{}\n".format(index_entry)
+
+            representation += entry
+
+        representation += "HeaderSize: {}".format(self.header_size)
+
+        return representation  
+
 
     @classmethod
     def parse(cls, archive, entry_point, tags):
@@ -152,7 +157,7 @@ class RPM(object):
         self.header = None
 
     def __str__(self):
-        return "Lead: {0}\nSignature: {1}\nHeader: {2}".format(
+        return "Lead: \n{0}\nSignature: {1}\nHeader: {2}".format(
                 str(self.lead).replace('\n', '\t\n'),
                 str(self.signature).replace('\n', '\t\n'),
                 str(self.header).replace('\n', '\t\n')
