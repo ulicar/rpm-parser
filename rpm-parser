@@ -7,137 +7,100 @@ from constants import *
 from utility import *
 
 
-class RPM(object):
-    MAGIC = b'\xed\xab\xee\xdb'
-    HEADER = b'\x8e\xad\xe8'
-    LEAD_SIZE = 96
+class Lead(object):
+    def __init__(self):
+        self.version = None
+        self.type = None
+        self.arhitecture = None                   # 2
+        self.package_name = None                  # 66
+        self.operating_system = None              # 2
+        self.signature = None                     # 2
+        self.header_version = None                # 1
+        self.reserved = None                      # 4
 
-    def __init__(self, archive):
-        self.archive = archive
-        self.__version = None                       # 4
-        self.__type = None                          # 2
-        self.__arhitecture = None                   # 2
-        self.__package_name = None                  # 66
-        self.__operating_system = None              # 2
-        self.__signature = None                     # 2
-        self.__header_version = None                # 1
-        self.__reserved = None                      # 4
-        self.__index_entries_count = None           # 4
-        self.__signature_size = None                # 4
-        self.__index = {
-                'tag': None,                        # 4
-                'type': None,                       # 4
-                'offset': None,                     # 4
-                'count': None                       # 4
-        }
-        self.__index_type = None
-        self.__signature_type = None                
-        self.__store = None                         # Unlimited
+    @staticmethod
+    def size()
+        return 96
 
+    def __str__(self):
+        return "Version: {0}\nPackageType: {1}\nArhitecture: {2}\n"\
+            "PackageName: {3}\nOperatingSystem: {4}\nSignature: {5}\n"\
+            "HeaderVersion: {6}\n".format(
+                    self.version, self.type, self.arhitecture,
+                    self.package_name, self.operating_system, self.signature,
+                    self.header_version
+                    )
 
-    def parse(self):
-        self.archive.seek(0)
-        self.parse_lead()
+    @classmethod
+    def parse(cls, archive, entry_point=4):
+        archive.seek(entry_point)
 
-        self.archive.seek(RPM.LEAD_SIZE)
-        self.parse_signature(Signature)
-
-        self.archive.seek(self.signature_size())
-        self.parse_header(Header)
-
-
-    def parse_lead(self):
-        magic = self.archive.read(4)
-
-        assert magic == RPM.MAGIC, 'File {f} is not a RPM self.archive'.format(f=self.__archive)
-
+        lead = cls()
+        
         rpm_version = self.archive.read(2)
-        self.__version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
-        log ('Version ' + self.__version)
+        lead.version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
 
-        self.__type = PackageType(s2i(self.archive.read(2)))
-        log (self.__type)
+        lead.type = PackageType(s2i(archive.read(2)))
 
-        self.__arhitecture = Arhitecture(s2i(self.archive.read(2)))
-        log (self.__arhitecture)
+        lead.arhitecture = Arhitecture(s2i(archive.read(2)))
 
-        self.__package_name = self.archive.read(66).decode('utf-8').strip('\0')
-        log ('PackageName '+ self.__package_name)
-         
-        self.__operating_system = OperatingSystem(s2i(self.archive.read(2)))
-        log (self.__operating_system)
+        lead.package_name = archive.read(66).decode('utf-8').strip('\0')
+     
+        lead.operating_system = OperatingSystem(s2i(archive.read(2)))
 
-        self.__signature = SignatureType(s2i(self.archive.read(2)))
-        log (self.__signature)
+        lead.signature = SignatureType(s2i(archive.read(2)))
 
-        reserved = self.archive.read(16)
+        lead.reserved = archive.read(16)
 
-    def parse_header(self, tags):
-        header = self.archive.read(3)
+        return lead
 
-        assert header == RPM.HEADER, 'Wrong header in RPM self.archive'
 
-        self.__header_version = c2i(self.archive.read(1))
-        log ('HeaderVersion ' + str(self.__header_version))
+class Index(object):
+    def __init__(self):
+        self.tag = None
+        self.type = None
+        self.offset = None
+        self.count = None
 
-        reserved = self.archive.read(4)
+    def size(self):
+        return count * type
 
-        self.__index_entries_count = i2i(self.archive.read(4))
-        log ('IndexEntriesCount ' + str(self.__index_entries_count))
+    def __str__(self):
+        return ''
 
-        self.__header_size = i2i(self.archive.read(4))
-        log ('HeaderSize ' + str(self.__header_size))
+    @classmethod
+    def parse(cls, archive, entry_point, tags):
+        archive.seek(entry_point)
 
-        self.__index_entries = []
-        for _ in range(0, self.__index_entries_count):
-            index = dict()
-            index['tag'] = tags(i2i(self.archive.read(4)))
-            index['type'] = i2i(self.archive.read(4))
-            index['offset'] = i2i(self.archive.read(4))
-            index['count'] = i2i(self.archive.read(4))
-            
-            self.__index_entries.append(index)
+        index = cls()
+        
+        index.tag= i2i(archive.read(4)))
+        
+        index.type = IndexType(i2i(archive.read(4)))
+        
+        index.offset = i2i(archive.read(4))
 
-        size = sum(index['count'] for index in self.__index_entries)
-        self.__store_position = RPM.LEAD_SIZE + size 
+        index.count = i2i(archive.read(4))
 
-        self.__index_entries.sort(key=lambda index: index['offset'])
+        return index
 
-        self.__store = {}
-        for index in self.__index_entries:
-            index_name = Index(index['type']).name
-            _, callback = IndexSettings[index_name].value
+    def aquire(cls, archive, base_position):
+        archive.seek(base_position + self.offset)
 
-            self.archive.seek(self.__store_position + index['offset'])
+        return archive.read(self.size())
 
-            #log (self.__index_type[index['type']], index['count'], index['tag'])
 
-            if index['type'] <= 5 or index['type'] == 7:
-                data = self.archive.read(size * index['count'])
+class Header(object):
+    MAGIC = b'\x8e\xad\xe8'
+    def __init__(self):
+        self.version = None
+        self.reserverd = None
+        self.index_entries_count = None
+        self.index_enties = None
+        self.header_size = None
 
-                self.__store[index['tag']] = callback(data)
-
-                log (index['tag'])
-
-                continue
-
-            elif index['type'] == 6 or index['type'] == 9:
-                data = self.archive.read()
-                strings = str_from_bytes(data, index['count'])
-
-                converted = list(map(callback, strings))
-
-                if index['count'] == 1:
-                    converted = converted[0]
-
-                self.__store[index['tag']] = converted
-
-                # log (index['tag'], self.__store[index['tag']])
-
-                continue
-
-    def parse_signature(self, signatures):
-        signature = self.parse_header(signatures)
+    def size(self):
+        return self.header_size
 
     def signature_size(self):
         start = self.__store_position + self.__header_size
@@ -145,6 +108,90 @@ class RPM(object):
         data = self.archive.read()
 
         return data.index(RPM.HEADER) + start
+
+    def __str__(self):
+        return ''
+
+    @classmethod
+    def parse(cls, archive, entry_pointi, tags):
+        archive.seek(entry_point)
+
+        assert cls.MAGIC == archive.read(3), 'Wrong header in RPM archive'
+
+        header = cls()
+
+        header.version = c2i(archive.read(1))
+
+        header.reserved = archive.read(4)
+
+        header.index_entries_count = i2i(archive.read(4))
+
+        header.size = i2i(archive.read(4))
+
+        header.index_entries = dict()
+
+        for _ in range(0, header.index_entries_count):
+            index = Index.parse(archive, archive.tell()) 
+
+            header.index_enties.append(index)
+
+        header.index.entries.sort(key=lambda index: index.offset)
+    
+        return header
+
+
+class Store(object):
+    def __init__(self, starting_point=None, data=None):
+        self.starting_point = starting_point
+        self.data = data
+
+    def size(self):
+        pass
+
+    def __str__(self):
+        pass
+    
+    @classmethod
+    def parse(cls, archive, index_entries, starting_point):
+
+        store = cls(starting_point)
+
+        for index in index_entries:
+            store.data[index.tag] = index.aquire(self.starting_point)
+
+        return store
+            
+
+
+class RPM(object):
+    MAGIC = b'\xed\xab\xee\xdb'
+
+    def __init__(self):
+        self.lead = None
+        self.signature = None
+        self.header = None
+
+    def __str__(self):
+        return "Lead: {0}\nSignature: {1}\nHeader: {2}".format(
+                str(self.lead).replace('\n', '\t\n'),
+                str(self.signature).replace('\n', '\t\n'),
+                str(self.header).replace('\n', '\t\n')
+                )
+
+    @classmethod
+    def parse(cls, archive, entry_point=0):
+        assert cls.MAGIC == archive.read(4), 'File {f} is not a RPM self.archive'.format(f=self.__archive)
+        
+        rpm = cls()
+        
+        rpm.lead = Lead.parse(archive, 4)
+
+        rpm.signature = Header.parse(archive, rpm.lead.size(), Signature)
+
+        rpm.header = Header.parse(archive, rpm.signature.size(), Header)
+
+        return rpm
+
 
 
 def main():
@@ -156,6 +203,8 @@ def main():
     with open(settings.rpm, 'rb') as archive:
         rpm = RPM(archive)
         rpm.parse()
+
+        log(str(rpm))
 
 
 def parse_arguments():
