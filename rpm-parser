@@ -18,7 +18,7 @@ class Lead(object):
         self.reserved = None                      # 4
 
     @staticmethod
-    def size()
+    def size():
         return 96
 
     def __str__(self):
@@ -34,8 +34,7 @@ class Lead(object):
         archive.seek(entry_point)
 
         lead = cls()
-        
-        rpm_version = self.archive.read(2)
+        rpm_version = archive.read(2)
         lead.version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
 
         lead.type = PackageType(s2i(archive.read(2)))
@@ -111,7 +110,7 @@ class Header(object):
         return ''
 
     @classmethod
-    def parse(cls, archive, entry_pointi, tags):
+    def parse(cls, archive, entry_point, tags):
         archive.seek(entry_point)
 
         assert cls.MAGIC == archive.read(3), 'Wrong header in RPM archive'
@@ -133,7 +132,7 @@ class Header(object):
 
             header.index_enties.append(index)
 
-        header.index.entries.sort(key=lambda index: index.offset)
+        header.index_entries.sort(key=lambda index: index.offset)
     
         return header
 
@@ -199,9 +198,7 @@ def main():
     set_debug(settings.verbose)
 
     with open(settings.rpm, 'rb') as archive:
-        rpm = RPM(archive)
-        rpm.parse()
-
+        rpm = RPM.parse(archive)
         log(str(rpm))
 
 
