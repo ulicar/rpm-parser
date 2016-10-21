@@ -36,17 +36,11 @@ class Lead(object):
         lead = cls()
         rpm_version = archive.read(2)
         lead.version = '{major}.{minor}'.format(major=c2i(rpm_version[0:1]), minor=c2i(rpm_version[1:2]))
-
         lead.type = PackageType(s2i(archive.read(2)))
-
         lead.arhitecture = Arhitecture(s2i(archive.read(2)))
-
         lead.package_name = archive.read(66).decode('utf-8').strip('\0')
-     
         lead.operating_system = OperatingSystem(s2i(archive.read(2)))
-
         lead.signature = SignatureType(s2i(archive.read(2)))
-
         lead.reserved = archive.read(16)
 
         return lead
@@ -70,13 +64,9 @@ class Index(object):
         archive.seek(entry_point)
 
         index = cls()
-        
-        index.tag= i2i(archive.read(4)))
-        
-        index.type = IndexType(i2i(archive.read(4)))
-        
+        index.tag= tags(i2i(archive.read(4)))
+        index.type = IndexTags(i2i(archive.read(4)))
         index.offset = i2i(archive.read(4))
-
         index.count = i2i(archive.read(4))
 
         return index
@@ -116,21 +106,15 @@ class Header(object):
         assert cls.MAGIC == archive.read(3), 'Wrong header in RPM archive'
 
         header = cls()
-
         header.version = c2i(archive.read(1))
-
         header.reserved = archive.read(4)
-
         header.index_entries_count = i2i(archive.read(4))
-
-        header.size = i2i(archive.read(4))
-
-        header.index_entries = dict()
+        header.header_size = i2i(archive.read(4))
+        header.index_entries = list()
 
         for _ in range(0, header.index_entries_count):
-            index = Index.parse(archive, archive.tell()) 
-
-            header.index_enties.append(index)
+            index = Index.parse(archive, archive.tell(), tags) 
+            header.index_entries.append(index)
 
         header.index_entries.sort(key=lambda index: index.offset)
     
@@ -150,7 +134,6 @@ class Store(object):
     
     @classmethod
     def parse(cls, archive, index_entries, starting_point):
-
         store = cls(starting_point)
 
         for index in index_entries:
@@ -180,10 +163,11 @@ class RPM(object):
         assert cls.MAGIC == archive.read(4), 'File {f} is not a RPM self.archive'.format(f=self.__archive)
         
         rpm = cls()
-        
         rpm.lead = Lead.parse(archive, 4)
+        log(rpm.lead)
 
         rpm.signature = Header.parse(archive, rpm.lead.size(), SignatureTags)
+        log(rpm.signature)
 
         rpm.header = Header.parse(archive, rpm.signature.size(), HeaderTags)
 
