@@ -15,7 +15,6 @@ class Lead(object):
         self.package_name = None                  # 66
         self.operating_system = None              # 2
         self.signature = None                     # 2
-        self.header_version = None                # 1
         self.reserved = None                      # 4
 
     @staticmethod
@@ -25,10 +24,9 @@ class Lead(object):
     def __str__(self):
         return "Version: {0}\nPackageType: {1}\nArhitecture: {2}\n"\
             "PackageName: {3}\nOperatingSystem: {4}\nSignature: {5}\n"\
-            "HeaderVersion: {6}\n".format(
+            "".format(
                     self.version, self.type, self.arhitecture,
                     self.package_name, self.operating_system, self.signature,
-                    self.header_version
                     )
 
     @classmethod
