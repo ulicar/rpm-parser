@@ -8,9 +8,9 @@ __all__ = [
     'OperatingSystem',
     'Arhitecture',
     'SignatureType',
-    'Signature',
-    'Header',
-    'Index',
+    'SignatureTags',
+    'HeaderTags',
+    'IndexTags',
     'IndexSettings'
 ]
 
@@ -37,7 +37,7 @@ class SignatureType(Enum):
     VERSION3 = 5
 
 
-class Signature(Enum):
+class SignatureTags(Enum):
     SIGTAG_DSA            = 267
     SIGTAG_RSA            = 268
     SIGTAG_SHA1           = 269
@@ -60,7 +60,7 @@ class Signature(Enum):
     TAG_HEADERI18NTABLE   = 100
 
 
-class Header(Enum):
+class HeaderTags(Enum):
     TAG_HEADERSIGNATURES  = 62
     TAG_HEADERIMMUTABLE   = 63
     TAG_HEADERI18NTABLE   = 100
@@ -219,7 +219,7 @@ class Header(Enum):
     TODO = 5011
 
 
-class Index(Enum):
+class IndexTags(Enum):
     NULL         = 0
     CHAR         = 1  
     INT8         = 2 

@@ -186,9 +186,9 @@ class RPM(object):
         
         rpm.lead = Lead.parse(archive, 4)
 
-        rpm.signature = Header.parse(archive, rpm.lead.size(), Signature)
+        rpm.signature = Header.parse(archive, rpm.lead.size(), SignatureTags)
 
-        rpm.header = Header.parse(archive, rpm.signature.size(), Header)
+        rpm.header = Header.parse(archive, rpm.signature.size(), HeaderTags)
 
         return rpm
 
