@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from enum import Enum
-from utility import *
+from .utility import *
 
 __all__ = [
     'PackageType', 
@@ -67,6 +67,7 @@ class HeaderTags(Enum):
     TAG_NAME              = 1000
     TAG_VERSION           = 1001
     TAG_RELEASE           = 1002
+    RAG_SERIAL            = 1003
     TAG_SUMMARY           = 1004
     TAG_DESCRIPTION       = 1005
     TAG_BUILDTIME         = 1006
@@ -113,6 +114,8 @@ class HeaderTags(Enum):
     TAG_REQUIREFLAGS      = 1048
     TAG_REQUIRENAME       = 1049
     TAG_REQUIREVERSION    = 1050
+    TAG_NOSOURCE          = 1051
+    TAG_NOPATCH           = 1052
     TAG_CONFLICTFLAGS     = 1053
     TAG_CONFLICTNAME      = 1054
     TAG_CONFLICTVERSION   = 1055
@@ -242,6 +245,6 @@ class IndexSettings(Enum):
     STRING       = (0, lambda d: d.hex())
     BIN          = (1, lambda d: d.hex())
     STRING_ARRAY = (0, ())
-    I18STRING     = (0, lambda d: d.hex())
+    I18STRING    = (0, lambda d: d.hex())
 
 

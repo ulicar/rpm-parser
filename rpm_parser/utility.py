@@ -8,6 +8,7 @@ DEBUG = False
 __all__ = [
     'c2i', 's2i', 'i2i',
     'str_from_bytes',
+    'read_string',
     'set_debug', 'log', 'die'
 ]
 
@@ -25,6 +26,19 @@ def str_from_bytes(bytes, count):
 
     return strings[0:count]
 
+
+def read_string(binary_stream):
+    string = ''
+    while True:
+        c = binary_stream.read(1)
+        c = c.decode('utf-8')
+
+        if c == '\0':
+            break
+
+        string += c
+
+    return string
 
 def set_debug(debug):
     global DEBUG

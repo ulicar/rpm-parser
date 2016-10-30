@@ -1,11 +1,9 @@
 #!/usr/bin/python3
-# -*- coding: utf8 -*-
 
-import argparse
 
-from constants import *
-from utility import *
-
+from .constants import *
+from .utility import *
+import pdb
 
 class Lead(object):
     def __init__(self):
@@ -53,8 +51,20 @@ class Index(object):
         self.offset = None
         self.count = None
 
-    def size(self):
-        return count * type
+    def read(self, archive):
+        if self.type in [IndexTags.STRING, IndexTags.I18STRING, IndexTags.BIN]:
+
+            return read_string(archive)
+
+        if self.type in [IndexTags.STRING_ARRAY]:
+
+            return ','.join(read_string(archive) for _ in range(self.count))
+
+        if self.type in [IndexTags.INT16, IndexTags.INT32]:
+            type_size = IndexSettings[self.type.name].value[0]
+            extractor = IndexSettings[self.type.name].value[1]
+
+            return str(extractor(archive.read(type_size)))
 
     def __str__(self):
         return "Tag: {0},\tType: {1},\tOffset: {2},\tCount: {3}"\
@@ -65,17 +75,17 @@ class Index(object):
         archive.seek(entry_point)
 
         index = cls()
-        index.tag= tags(i2i(archive.read(4)))
+        index.tag = tags(i2i(archive.read(4)))
         index.type = IndexTags(i2i(archive.read(4)))
         index.offset = i2i(archive.read(4))
         index.count = i2i(archive.read(4))
 
         return index
 
-    def aquire(cls, archive, base_position):
+    def aquire(self, archive, base_position):
         archive.seek(base_position + self.offset)
 
-        return archive.read(self.size())
+        return self.read(archive)
 
 
 class Header(object):
@@ -127,22 +137,22 @@ class Header(object):
 
 
 class Store(object):
-    def __init__(self, starting_point=None, data=None):
+    def __init__(self, starting_point=None):
         self.starting_point = starting_point
-        self.data = data
-
-    def size(self):
-        pass
+        self.data = dict()
 
     def __str__(self):
         pass
     
     @classmethod
-    def parse(cls, archive, index_entries, starting_point):
+    def parse(cls, archive, starting_point, index_entries):
         store = cls(starting_point)
 
         for index in index_entries:
-            store.data[index.tag] = index.aquire(self.starting_point)
+            data = index.aquire(archive, starting_point)
+            log(index.tag.name +'  '+ str(data))
+            
+            #store.data[index.tag] = data
 
         return store
             
@@ -155,6 +165,7 @@ class RPM(object):
         self.lead = None
         self.signature = None
         self.header = None
+        self.store = None
 
     def __str__(self):
         return "Lead: \n{0}\nSignature: {1}\nHeader: {2}".format(
@@ -169,51 +180,15 @@ class RPM(object):
         
         rpm = cls()
         rpm.lead = Lead.parse(archive, 4)
-        log(rpm.lead)
+        #log(rpm.lead)
+
 
         rpm.signature = Header.parse(archive, rpm.lead.size(), SignatureTags)
-        log(rpm.signature)
+        #log(rpm.signature)
 
-        rpm.header = Header.parse(archive, rpm.signature.size(), HeaderTags)
+        rpm.header = Header.parse(archive, 456, HeaderTags)
 
-        return rpm
+        rpm.store = Store.parse(archive, archive.tell(), rpm.header.index_entries)
 
-
-
-def main():
-    global DEBUG
-
-    settings = parse_arguments()
-    set_debug(settings.verbose)
-
-    with open(settings.rpm, 'rb') as archive:
-        rpm = RPM.parse(archive)
-        log(str(rpm))
-
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Extract files from RPM package')
-    parser.add_argument(
-        'rpm',
-        metavar='RPM',
-        help='RPM file'
-    )
-
-    parser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        default=False,
-        help='log metadata as it\'s being parsed'
-    )
-
-    return parser.parse_args()
-
-
-if __name__ == '__main__':
-    try:
-        main()
-    except Exception as error:
-        import traceback
-        traceback.print_exc()
-        die(str(error))
+        return None
 
