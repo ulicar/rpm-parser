@@ -1,0 +1,3 @@
+include rpm.tool
+include README.md
+include README.txt

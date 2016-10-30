@@ -1,0 +1,46 @@
+#!/usr/bin/python3
+
+import argparse
+
+from rpm_parser.utility import *
+from rpm_parser.constants import *
+from rpm_parser.rpm import RPM
+
+
+def main():
+    global DEBUG
+
+    settings = parse_arguments()
+    set_debug(settings.verbose)
+
+    with open(settings.rpm, 'rb') as archive:
+        rpm = RPM.parse(archive)
+        log(str(rpm))
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Extract files from RPM package')
+    parser.add_argument(
+        'rpm',
+        metavar='RPM',
+        help='RPM file'
+    )
+
+    parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        default=False,
+        help='log metadata as it\'s being parsed'
+    )
+
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as error:
+        import traceback
+        traceback.print_exc()
+        die(str(error))
+
